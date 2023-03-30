@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import footer, navbar %}
+{% block title %}选择任务组{% endblock %}
+{% block content %}
+<div class="container">
+    {% include 'background.html' %}
+    <div class="px-1 px-md-3 px-lg-5 py-3 mb-4 bg-light rounded-3">
+        {{ navbar(1, current_user.name, current_user.adjudicator) }}
+    </div>
+    <div class="px-1 px-md-3 px-lg-5 py-3 mb-4 bg-light rounded-3">
+        <div class="container-fluid py-3">
+            <div class="row">
+                <div>
+                    <h1 class="display-4 text-center text-lg-start">{{ current_user.name }} 的任务组</h1>
+                </div>
+                <div>
+                    <div style="width: 100%;overflow: hidden;text-align:center;">
+                        <div style="width: 40%;display: inline-block;">
+                            <a id="task2"></a>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-center m-5" id="pending">
+                        {% include 'pending.html' %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{ footer() }}
+</div>
+{% endblock %}
+{% block javascript %}
+<script>
+    let pending = document.getElementById("pending")
+
+    let item2 = document.getElementById("task2")
+
+    let groups = new Map()
+
+    refresh()
+
+    function refresh() {
+        pending.classList.toggle("d-none", false)
+
+        groups = new Map()
+
+        applyAjax("{{ url_for('groups.load') }}", new FormData(), data => {
+            task2_dict = data["task2"]
+            makeItem(item2, task2_dict)
+
+            pending.classList.toggle("d-none", true)
+            pending.classList.toggle("d-none", true)
+        }), (e, xhr) => {
+            toast("获取任务组失败：" + xhr.status + " " + xhr.statusText, "danger")
+            pending.classList.toggle("d-none", true)
+        }
+    }
+
+    function cmp0(a, b) { return a[0] - b[0] }
+
+    function cmp1(a, b) { return a[1] === b[1] ? a[0] - b[0] : a[1] < b[1] ? -1 : 1 }
+
+    function cmp2(a, b) { return Math.abs(a[2] - b[2]) >= 1e-8 ? b[2] - a[2] : a[3] !== b[3] ? a[3] - b[3] : a[0] - b[0] }
+
+    function makeItem(item, contents) {
+        item.classList.add("list-group-item", "list-group-item-action", "d-flex", "align-items-center")
+        item.href = contents["href"] // 超链接
+        item.ariaCurrent=true
+
+        let title = document.createElement("div")
+        title.classList.add("text-truncate", "flex-grow-1", "pe-3")
+        title.innerText = contents["title"] // 任务组名称
+        item.append(title)
+
+        let annotated = document.createElement("div")
+        annotated.classList.add("badge", "bg-success", "rounded-pill", "me-1", "d-none", "d-sm-block")
+        annotated.innerText = contents["annotated"] // 已标注数量
+        item.append(annotated)
+
+        let left = document.createElement("div")
+        left.classList.add("badge", "bg-secondary", "rounded-pill", "me-1", "d-none", "d-sm-block")
+        left.innerText = contents["left"] // 剩余数量
+        item.append(left)
+
+        return item
+    }
+</script>
+{% endblock %}

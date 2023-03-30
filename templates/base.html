@@ -1,0 +1,154 @@
+{% from 'macros.html' import drawicon %}
+<!doctype html>
+<html lang="zh" class={% block pageclass %}{% endblock %}>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{% endblock %} - 论点归纳标注</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bootstrap-icons.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bootstrap-table.min.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/bootstrap-table-fixed-columns.min.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/pie.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/background.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/nav.css') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <style>
+        textarea {
+            width: 70%;
+            white-space: pre-wrap;
+            overflow: hidden;
+            resize: none;
+            height: 30px;
+            min-height: 10px;
+            max-height: 300px;
+
+        }
+        button {
+            min-width: 60px;
+            margin-right: 5px;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%
+        }
+        .input-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            width: 100%
+        }
+        .display-level {
+            margin-right: 25px;
+            max-width: 175px;
+            readonly: true;
+        }
+        .select-level {
+            margin-right: 25px;
+            max-width: 175px;
+        }
+        .other-level {
+            height: 35px;
+            display: none;
+            margin-right: 25px;
+            max-width: 200px;
+        }
+        .completed {
+            color: grey;
+            text-decoration: line-through;
+        }
+
+        /* 隐藏默认的复选框 */
+        input[type="checkbox"] {
+            position: absolute;
+            zoom : 180%;
+            opacity: 0;
+        }
+
+        /* 自定义复选框图标 */
+        input[type="checkbox"] + span::before {
+            content: "✓";
+            display: inline-block;
+            margin-right: 0.5em;
+            font-size: 1.2em;
+            color: green;
+        }
+
+        /* 自定义已选中的复选框图标 */
+        input[type="checkbox"]:checked + span::before {
+            content: "✗";
+            color: red;
+        }
+    </style>
+    {% block headfoot %}{% endblock %}
+</head>
+
+<body class={% block bodyclass %}{% endblock %}>
+    <div class="toast-container position-absolute top-0 start-50 translate-middle-x p-3" style="z-index: 11"></div>
+    <button class="btn btn-danger btn-floating d-none" id="back-to-top" type="button"
+        style="position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px; padding: 0px;
+        border-radius: 25px; font-size: 30px; text-align: center; z-index: 9">
+        {{ drawicon('arrow-up-short') }}
+    </button>
+    {% block content %}{% endblock %}
+    <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap-table.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap-table-fixed-columns.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/easypiechart.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/util.js') }}"></script>
+    <script>
+        let backToTop = document.getElementById("back-to-top")
+        window.addEventListener("scroll", () => backToTop.classList.toggle("d-none", document.body.scrollTop <= 20 && document.documentElement.scrollTop <= 20))
+        backToTop.addEventListener("click", scrollToTop)
+
+        {% for message in get_flashed_messages() %}
+        toast("{{ message }}", "danger")
+        {% endfor %}
+
+        function scrollToTop() {
+            document.body.scrollTop = document.documentElement.scrollTop = 0
+        }
+
+        function toast(message, type) {
+            let toast = document.createElement("div")
+            toast.classList.add("toast", "align-items-center", "bg-" + type, "text-white", "border-0")
+            toast.ariaAtomic = "true"
+            toast.ariaLive = "assertive"
+            toast.setAttribute("role", "toast")
+
+            let content = document.createElement("div")
+            content.classList.add("d-flex", "flex-nowrap", "align-items-center")
+
+            let icon = document.createElement("i")
+            icon.classList.add("bi", "bi-" + (type == "success" ? "check-circle-fill" : "exclamation-triangle-fill"), "lead", "ms-3")
+
+            let body = document.createElement("div")
+            body.classList.add("toast-body", "flex-grow-1", "text-break")
+            body.innerText = message
+
+            let dismiss = document.createElement("button")
+            dismiss.classList.add("btn-close", "flex-shrink-0", "mx-3")
+            dismiss.type = "button"
+            dismiss.ariaLabel = "关闭"
+            dismiss.setAttribute("data-bs-dismiss", "toast")
+
+            content.append(icon)
+            content.append(body)
+            content.append(dismiss)
+
+            toast.append(content)
+            toast.addEventListener('hidden.bs.toast', function () { this.parentNode.removeChild(this) })
+            document.querySelector(".toast-container").append(toast)
+
+            let bsToast = new bootstrap.Toast(toast)
+            bsToast.show()
+        }
+    </script>
+    {% block javascript %}{% endblock %}
+</body>
+
+</html>

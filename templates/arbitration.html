@@ -1,0 +1,1017 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import drawicon, footer, navbar %}
+{% block title %}任务{% if current_user.adjudicator %}仲裁{% else %}标注{% endif %} - {{ title }}{% endblock %}
+{% block content %}
+
+<div class="modal fade" id="goto-task" tabindex="-1" aria-labelledby="goto-task-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="goto-task-title">选择当前任务</h5>
+                <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <div class="list-group list-group-flush">
+                    {% for tid in tasks %}
+                    <button class="list-group-item list-group-item-action d-flex align-items-center"
+                        id="goto-task-{{ loop.index0 }}" type="button" aria-current="true">
+                        <div class="text-truncate flex-grow-1 pe-3">{{ loop.index }}. {{ tasks[tid][0]}}</div>
+                        {% if tasks[tid][1] == -1 %}
+                        <div class="badge bg-secondary" id="task-badge-{{ loop.index0 }}">未完成</div>
+                        {% else %}
+                        <div class="badge bg-success" id="task-badge-{{ loop.index0 }}">已完成</div>
+                        {% endif %}
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="container">
+    {% include 'background.html' %}
+    <div class="mb-4 bg-light rounded-3">
+        <div class="progress" style="height: 5px;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" id="progress" role="progressbar"
+                aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%"></div>
+        </div>
+        <div style="margin-top: -5px;">
+            <div class="px-1 px-md-3 px-lg-5 py-3">
+                {{ navbar(1, current_user.name, current_user.adjudicator) }}
+            </div>
+        </div>
+    </div>
+    <div class="px-1 px-md-3 px-lg-5 py-3 mb-2 bg-light rounded-3">
+        <div class="container-fluid">
+            <div class="py-3">
+                <div class="display-5" id="object">object</div>
+                <div class="d-flex align-items-center">
+                    <button
+                        class="lead fw-bold bg-white bg-opacity-75 border border-dark border-2 rounded-pill me-2 me-md-3 me-lg-4 px-1 px-md-2"
+                        id="counter" role="button" data-bs-toggle="modal" data-bs-target="#goto-task">0/0</button>
+                    <div class="flex-grow-1">
+                        <span class="spinner-border spinner-border-sm mx-1" id="loading" role="status">
+                            <span class="visually-hidden">加载中……</span>
+                        </span>
+                    </div>
+
+                </div>
+                <div class="lead" id="aspect">aspects</div>
+                <br>
+                <div>
+                    {% if gid == 2 %}
+                    <div class="lead"><b>任务一：</b>选择是否修改冲突句子</div>
+                    {% endif %}
+                    <div class="text" style="font-family:宋体" id="sentence">The quick brown fox jumps over a lazy dog.</div>
+                </div>
+            </div>
+            {% if gid == 1 %}
+            <div class="lead"><b>任务一：</b>选择是否修改细粒度角度</div>
+            {% else%}
+            <div class="lead"><b>任务二：</b>选择是否修改细粒度角度</div>
+            {% endif %}
+            <br>
+            <div id="select_list">
+                <div>
+                    <div style="display:flex;align-items:center;" >
+                        <select name="level1" class="select-level form-control" onchange="updateOptions(this)">
+                            <option value="0">请选择</option>
+                            <option value="1">汽车</option>
+                            <option value="2">餐厅</option>
+                            <option value="3">笔记本电脑</option>
+                            <option value="4">化妆品</option>
+                        </select>
+
+                        <select name="level2" class="select-level form-control" onchange="updateOptions(this)">
+                            <option value="0">请选择</option>
+                        </select>
+
+                        <select name="level3" class="select-level form-control" onchange="updateOptions(this)">
+                            <option value="0">请选择</option>
+                        </select>
+                        <textarea maxlength="10" class="other-level" placeholder="请输入"></textarea>
+                        <button class="btn btn-outline-success" onclick="saveSelection(this)">保存</button>
+                    </div>
+
+                    <div style="display:none;align-items:center;" >
+                        <textarea class="display-level"></textarea>
+                        <textarea class="display-level"></textarea>
+                        <textarea class="display-level"></textarea>
+
+                        <button class="btn btn-outline-primary" onclick="changeSelection(this)">修改</button>
+                        <button class="btn btn-outline-danger"  onclick="deleteSelection(this)">删除</button>
+                    </div>
+                </div>
+            </div>
+            <br>
+            {%if gid == 1 %}
+            <div class="lead"><b>任务二：</b>判断是否接受归纳结果</div><br>
+            {% else %}
+            <div class="lead"><b>任务三：</b>判断是否接受归纳结果</div><br>
+            {% endif %}
+            <div id="annotated-list" class="input-group">
+
+            </div>
+            <div id="new-annotation" style="display:none">
+                <br>
+                {%if gid == 1 %}
+                <div class="lead"><b>任务三：</b>输入修正后结果</div>
+                {% else %}
+                <div class="lead"><b>任务四：</b>输入修正后结果</div>
+                {% endif %}
+                <br>
+                <div id="input-list" class="input-group">
+                    <div class="input-container" id="input_container_1">
+                        <span class="lead" style="vertical-align:top;min-width:70px;">归纳1:</span>
+                        <textarea maxlength="50" oninput="this.style.height = this.scrollHeight + 'px';" id="input1"></textarea>
+                    </div>
+                    <div class="input-container" id="input_container_2">
+                        <span class="lead" style="vertical-align:top;min-width:70px;">归纳2:</span>
+                        <textarea maxlength="50" oninput="this.style.height = this.scrollHeight + 'px';" id="input2"></textarea>
+                    </div>
+                    <div class="input-container" id="input_container_3">
+                        <span class="lead" style="vertical-align:top;min-width:70px;">归纳3:</span>
+                        <textarea maxlength="50" oninput="this.style.height = this.scrollHeight + 'px';" id="input3"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="btn-toolbar justify-content-center mb-2" role="toolbar">
+                <div class="btn-group mx-2 my-1" role="group" aria-label="任务组导航">
+                    <button class="btn btn-outline-primary" id="exit">选择任务组</button>
+                </div>
+                <div class="btn-group mx-2 my-1" role="group" aria-label="添加输入框">
+                    <button class="btn btn-outline-warning" onclick="add_input()" id="add-input">添加</button>
+                </div>
+                <div class="btn-group mx-2 my-1" role="group" aria-label="删除输入框">
+                    <button class="btn btn-outline-danger" onclick="del_input()" id="del-input">删除</button>
+                </div>
+                <div class="btn-group mx-2 my-1" role="group" aria-label="任务保存">
+                    <button class="btn btn-outline-success" onclick="saveAnnotation()" id="save-task">保存任务</button>
+                </div>
+                <div class="btn-group mx-2 my-1" role="group" aria-label="任务导航">
+                    <button class="btn btn-outline-primary" id="previous-task">
+                        {{ drawicon('arrow-left-circle') }}
+                    </button>
+                    <button class="btn btn-outline-primary" id="open-goto-task" data-bs-toggle="modal"
+                        data-bs-target="#goto-task">选择任务</button>
+                    <button class="btn btn-outline-primary" id="next-task">
+                        {{ drawicon('arrow-right-circle') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{ footer() }}
+</div>
+{% endblock %}
+{% block javascript %}
+<script>
+    let loadingIndicator = document.getElementById("loading")
+
+    let tidIndex = -1
+    let anno_num = 0
+    let state_list = []
+
+    let input_num = 3
+    let del_btn = document.getElementById("del-input")
+    del_btn.disabled = true
+
+    let tidList = []
+    {% for tid in tid_list %}
+    tidList.push(Number("{{tid }}"))
+    {% endfor %}
+
+    let gid = "{{ gid }}"
+    let uid = "{{ uid }}"
+
+    load(tidList.findIndex(x => x == Number("{{ last_tid }}")))
+
+    function load(nextTidIndex) {
+        if (nextTidIndex < 0 || nextTidIndex >= tidList.length)
+            return loadingIndicator.classList.toggle("d-none", false)
+
+        if (nextTidIndex !== tidIndex) {
+            let form = new FormData()
+            form.append("uid", uid)
+            form.append("gid", gid)
+            form.append("tid", tidList[nextTidIndex])
+
+            applyAjax(
+                "{{ url_for('task.loadtask') }}", form, data => {
+                    setProgress(nextTidIndex)
+                    setText(nextTidIndex, data)
+                    setTaskNavButtons(nextTidIndex)
+                    setModals(tidIndex, nextTidIndex)
+                    setAnnotation(data["arbi_tasks"])
+
+                    reloadAnnotation(data["arbi_list"], data["aspect_list"])
+                    loadingIndicator.classList.toggle("d-none", true)
+                }, (e, xhr) => {
+                    toast("获取任务 " + (nextTidIndex + 1) + " 失败：" + xhr.status + " " + xhr.statusText, "danger")
+                    window.location.href = "{{ url_for('route.groups') }}"
+                }
+            )
+            tidIndex = nextTidIndex
+        } else loadAnnotation()
+    }
+
+    function loadAnnotation() {
+        let form = new FormData();
+        form.append("gid", Number(gid));
+        form.append("tid", tidList[tidIndex]);
+        loadingIndicator.classList.toggle("d-none", false);
+
+        applyAjax("{{ url_for('task.loadanno') }}", form, anno => {
+            reloadAnnotation(anno["anno_list"], anno["aspect_list"]);
+            loadingIndicator.classList.toggle("d-none", true);
+        }, (e, xhr) => {
+            toast("获取标注 " + (tidIndex + 1) + " 失败：" + xhr.status + " " + xhr.statusText, "danger");
+            window.location.href = "{{ url_for('route.groups') }}";
+        })
+    }
+    // 保存标注
+    function saveAnnotation(action, reportSuccess) {
+        let form = new FormData();
+        form.append("gid", Number(gid));
+        form.append("tid", Number(tidList[tidIndex]));
+
+        let anno_list = [];
+        // 遍历输入框
+        for (let j=1;j<=input_num;j++){
+            let input = document.getElementById("anno"+j.toString());
+            if(input!==null){
+                anno_list.push(input.value)
+            }
+        }
+
+        let arbi_list = [];
+
+        let all_rejected = is_all_rejected()
+        if(all_rejected){
+            for (let i=1; i<=input_num; i++){
+                let input = document.getElementById("input"+i.toString());
+                if(input.value.length > 0){
+                    arbi_list.push(input.value);
+                }
+            }
+        }
+
+        let aspect_list = [];
+
+        let rows = select_list.children;
+        for(let j=0;j<rows.length;j++){
+            let display_div = rows[j].children[1];
+            let level_list = display_div.querySelectorAll("textarea");
+            if(level_list[0].value.length > 0){
+                aspect_list.push([level_list[0].value, level_list[1].value, level_list[2].value])
+            }
+        }
+
+        // 保存每个句子是否被删除
+        if (gid==2) {
+            let review_state = [];
+
+            let sentence_div = document.getElementById("sentence")
+            let checkbox_list = sentence_div.querySelectorAll("input")
+            for(let k=0;k<checkbox_list.length;k++){
+                if (checkbox_list[k].checked) {
+                    review_state.push(0)
+                }else{
+                    review_state.push(1)
+                }
+            }
+            form.append("review_state", JSON.stringify(review_state));
+        }
+
+        form.append("anno_list", JSON.stringify(anno_list));
+        form.append("arbi_list", JSON.stringify(arbi_list));
+        form.append("state_list", JSON.stringify(state_list));
+        form.append("aspect_list", JSON.stringify(aspect_list));
+
+        applyAjax("{{ url_for('task.save') }}", form, status => {
+            if (!status["success"]) toast("保存任务 " + (tidIndex + 1) + " 失败：" + xhr.status + " " + xhr.statusText, "danger")
+            if (status["success"] && reportSuccess){
+                toast("保存任务成功！", "success")
+            }
+            change_state(arbi_list)
+            if (action) action()
+            else reloadAnnotation(arbi_list, aspect_list)
+        }, (e, xhr) => toast("保存任务 " + (tidIndex + 1) + " 失败：" + xhr.status + " " + xhr.statusText, "danger"))
+    }
+
+    function reloadAnnotation(anno_list, aspect_list) {
+        // 修正输入框个数
+        if(anno_list.length > 0){
+            need_num = anno_list.length-input_num
+            for (let i=0;i<need_num;i++){
+                add_input();
+            }
+        }else{
+            no_need_num = input_num-3;
+            for (let i=0;i<no_need_num;i++){
+                del_input();
+            }
+            let all_rejected = is_all_rejected()
+            let new_anno_div = document.getElementById("new-annotation");
+            if(all_rejected){
+                if(new_anno_div.style.display == "none"){
+                    new_anno_div.style.display = "block"
+                }
+            }else{
+                new_anno_div.style.display = "none"
+            }
+        }
+
+        // 删除select_list下全部div
+        while (select_list.firstChild){
+            select_list.removeChild(select_list.firstChild);
+        }
+        // 全部展示行
+        for(let i=0;i<aspect_list.length;i++){
+            let level1_text = aspect_list[i][0];
+            let level2_text = aspect_list[i][1];
+            let level3_text = aspect_list[i][2];
+            // 根据text产生新行，并且展示
+            displaySelection(level1_text, level2_text, level3_text);
+        }
+        if(aspect_list.length<5){
+            // 除展示行外，在最后一行加入选择行
+            let new_row = createNewRow();
+            select_list.appendChild(new_row);
+        }
+        // 修正选择框个数
+        select_num = aspect_list.length + 1;
+
+        // 遍历输入框，填入或清空
+        for (let j=1;j<=input_num;j++){
+            let input = document.getElementById("input"+j.toString());
+            if(j<=anno_list.length){
+                input.value = anno_list[j-1]
+            }else{
+                input.value = ""
+            }
+        }
+    }
+
+    function displaySelection(level1_text, level2_text, level3_text){
+        let new_row = createNewRow();
+        select_list.appendChild(new_row);
+        let display_div = new_row.children[1];
+        display_div.style.display = "flex";  // 展示
+        let levels_textarea = display_div.querySelectorAll("textarea");
+        // 展示文本
+        levels_textarea[0].value = level1_text;
+        levels_textarea[1].value = level2_text;
+        levels_textarea[2].value = level3_text;
+        // 设为只读
+        for (i=0;i<3;i++){
+            levels_textarea[i].readOnly = true;
+        }
+
+        // 设置索引
+        let select_div = new_row.children[0];
+        select_div.style.display = "none";
+        let levels_select = select_div.querySelectorAll("select");
+        levels_select[0].value = Object.keys(aspects_dict).indexOf(level1_text);
+        // 更新level2_list
+        let level2_list = Object.keys(aspects_dict[level1_text]);
+        var level2_html = '';
+        for (i=0; i<level2_list.length; i++){
+            level2_html = level2_html + '<option value="' + String(i+1)+ '">' + level2_list[i] + '</option>';
+        }
+        levels_select[1].innerHTML = level2_html;
+        // level2索引
+        levels_select[1].value = Object.keys(aspects_dict[level1_text]).indexOf(level2_text);
+
+        // 更新level3_list
+        let level3_list = aspects_dict[level1_text][level2_text];
+        var level3_html = '';
+        for (i=0; i<level3_list.length; i++){
+            level3_html = level3_html + '<option value="' + String(i+1)+ '">' + level3_list[i] + '</option>';
+        }
+        levels_select[2].innerHTML = level3_html;
+        // level3索引
+        if(level3_text in level3_list){
+            levels_select[2].value = level3_list.indexOf(level3_text);
+        }else{
+            levels_select[2].value = level3_list.length - 1;
+            levels_select[2].nextElementSibling.value = level3_text;
+        }
+    }
+
+    function change_state(arbi_list){
+        let taskBadge = document.getElementById("task-badge-" + tidIndex)
+        taskBadge.classList.toggle("bg-secondary", false)
+        taskBadge.classList.toggle("bg-warning", false)
+        taskBadge.classList.toggle("bg-success", false)
+        let all_selected = true
+        let all_rejected = true
+        for(i=0;i<anno_num;i++){
+            if(state_list[i]==-1){
+                all_selected = false
+                break
+            }else if(state_list[i]==1){
+                all_rejected = false
+                break
+            }
+        }
+        if(all_selected==false){ //若没有全选
+            taskBadge.classList.toggle("bg-secondary")
+            taskBadge.innerText = "未完成"
+        }else if(all_rejected==true){ //若全部拒绝
+            taskBadge.classList.toggle("bg-" + (arbi_list.length <= 0 ? "secondary" : "success"))
+            taskBadge.innerText = arbi_list.length <= 0 ? "未完成" : "已完成"
+        }else{
+            taskBadge.classList.toggle("bg-success")
+            taskBadge.innerText = "已完成"
+        }
+    }
+
+
+
+    // 标记进度
+    function setProgress(tidIndex) {
+        let progress = document.getElementById("progress")
+        let value = Math.round((tidIndex + 1) * 100.0 / tidList.length)
+        progress.style.width = value + "%"
+        progress.setAttribute("aria-valuenow", value)
+    }
+
+    // 显示文本
+    function setText(tidIndex, data) {
+        document.getElementById("counter").innerText = (tidIndex + 1) + "/" + tidList.length
+        document.getElementById("object").innerText = data["object"]
+        document.getElementById("aspect").innerHTML = "以下评论包括角度<b>" + highlight(data["aspect"]) + "</b>，请将其归纳为一句话（不超过50字）"
+
+        if(data['reviews'].length>1){
+            let reviews_innerHTML = ""
+            for(i=0;i<data['reviews'].length;i++){
+                reviews_innerHTML += "<br><div style='font-family:宋体'>"
+                if(data['review_state'][i]==1){
+                    reviews_innerHTML += "<input type='checkbox' onclick='completeTask(this)'>"
+                    reviews_innerHTML += "<span>" + highlight(data['reviews'][i]) + "</span>"
+                }else if(data['review_state'][i]==0){
+                    reviews_innerHTML += "<input type='checkbox' onclick='completeTask(this)' checked>"
+                    reviews_innerHTML += "<span class='completed'>" + highlight(data['reviews'][i]) + "</span>"
+                }
+                
+                reviews_innerHTML += "</div>"
+            }
+            document.getElementById("sentence").innerHTML = reviews_innerHTML
+        }else{
+            document.getElementById("sentence").innerHTML = "<div style='text-indent:2em;'>" + highlight(data["text"]) + "</div>"
+        }
+    }
+    function completeTask(checkbox) {
+        // 获取复选框和文本元素
+        const text = checkbox.nextElementSibling;
+
+        // 如果复选框已选中，则添加“completed”类，否则删除该类
+        if (checkbox.checked) {
+            text.classList.add('completed');
+        } else {
+            text.classList.remove('completed');
+        }
+    }
+    // 高亮处理
+    function highlight(string){
+        string = string.replace(/a0_s/g,"<mark style='background-color:lightskyblue'>")
+        string = string.replace(/a0_e/g,"</mark>")
+        string = string.replace(/a1_s/g,"<mark style='background-color:orange'>")
+        string = string.replace(/a1_e/g,"</mark>")
+        string = string.replace(/a2_s/g,"<mark style='background-color:pink'>")
+        string = string.replace(/a2_e/g,"</mark>")
+        return string
+    }
+    // 添加输入框
+    function add_input(){
+        let new_div = document.createElement("div");
+        new_div.classList.add("input-container");
+        new_div.setAttribute('id', 'input_container_'+(input_num+1).toString());
+        //创建新标签
+        let new_label = document.createElement('span');
+        new_label.setAttribute('class', 'lead');
+        new_label.setAttribute('style', 'vertical-align:top;min-width:70px;' );
+        new_label.innerText = "归纳"+(input_num+1).toString()+":";
+        //创建新输入框
+        let new_input = document.createElement('textarea');
+        new_input.setAttribute('maxlength', '50');
+        new_input.setAttribute('oninput', "this.style.height = this.scrollHeight + 'px';");
+        new_input.setAttribute('id', 'input'+(input_num+1).toString());
+
+        new_div.appendChild(new_label)
+        new_div.appendChild(new_input)
+
+        let input_list = document.getElementById("input-list");
+
+        input_list.insertBefore(new_div,null);
+
+        input_num += 1
+
+        if(input_num==6){
+            let add_btn = document.getElementById("add-input");
+            add_btn.disabled = true;
+        }
+        if(input_num>3){
+            let del_btn = document.getElementById("del-input");
+            del_btn.disabled = false;
+        }
+    }
+    // 添加已标注文本
+    function add_annotated(anno, state){
+        let new_div = document.createElement("div");
+        new_div.classList.add("input-container");
+        new_div.setAttribute('id', 'anno_container_'+(anno_num+1).toString());
+        //创建新标签
+        let new_label = document.createElement('span');
+        new_label.setAttribute('class', 'lead');
+        new_label.setAttribute('style', 'vertical-align:top;min-width:70px;' );
+        new_label.innerText = "标注"+(anno_num+1).toString()+":";
+        //创建标注文本
+        let new_anno = document.createElement('textarea');
+        new_anno.setAttribute('class', 'lead');
+        new_anno.setAttribute('readonly', 'readonly');
+        new_anno.setAttribute('oninput', "this.style.height = this.scrollHeight + 'px';");
+        new_anno.setAttribute('id', 'anno'+(anno_num+1).toString());
+        new_anno.readonly = true
+        new_anno.value = anno
+
+        //创建接受按钮
+        let new_accept = document.createElement('button')
+        new_accept.setAttribute('class',"btn btn-outline-success")
+        new_accept.setAttribute('style', 'vertical-align:top;width:60px;height:30px;line-height:15px' );
+        new_accept.setAttribute('id',"accept"+(anno_num+1).toString())
+        new_accept.innerText = "接受"
+        const annoIndex = anno_num
+        new_accept.addEventListener("click", () => accept_anno(annoIndex))
+        //创建拒绝按钮
+        let new_reject = document.createElement('button')
+        new_reject.setAttribute('class',"btn btn-outline-danger")
+        new_reject.setAttribute('style', 'vertical-align:top;width:60px;height:30px;line-height:15px' );
+        new_reject.setAttribute('id',"reject"+(anno_num+1).toString())
+        new_reject.innerText = "拒绝"
+        new_reject.addEventListener("click", () => reject_anno(annoIndex))
+        //创建按钮组
+        let btn_group = document.createElement('div');
+        btn_group.setAttribute('class',"btn-group mx-2 my-1")
+        btn_group.setAttribute('role',"group")
+        btn_group.appendChild(new_accept)
+        btn_group.appendChild(new_reject)
+
+        new_div.appendChild(new_label)
+        new_div.appendChild(new_anno)
+        new_div.appendChild(btn_group)
+
+        let annotated_list = document.getElementById("annotated-list");
+        annotated_list.insertBefore(new_div,null);
+
+        state_list.push(state);
+        if(state==0){
+            reject_anno(annoIndex)
+        }else if(state==1){
+            accept_anno(annoIndex)
+        }
+
+        anno_num += 1
+    }
+    // 接受标注
+    function accept_anno(annoIndex){
+        state_list[annoIndex] = 1;
+        let accept_btn = document.getElementById("accept"+(annoIndex+1).toString())
+        accept_btn.classList.add("active");
+        let reject_btn = document.getElementById("reject"+(annoIndex+1).toString())
+        reject_btn.classList.remove("active");
+
+        let new_anno_div = document.getElementById("new-annotation");
+        if(new_anno_div.style.display == "block"){
+            new_anno_div.style.display = "none"
+        }
+    }
+    // 拒绝标注
+    function reject_anno(annoIndex){
+        state_list[annoIndex] = 0;
+        let reject_btn = document.getElementById("reject"+(annoIndex+1).toString())
+        reject_btn.classList.add("active");
+        let accept_btn = document.getElementById("accept"+(annoIndex+1).toString())
+        accept_btn.classList.remove("active");
+        // 若全部拒绝
+        let all_rejected = is_all_rejected()
+
+        if(all_rejected){
+            let new_anno_div = document.getElementById("new-annotation");
+            new_anno_div.style.display = "block"
+        }
+    }
+    // 清空标注
+    function clear_annotated(){
+        let tmp = anno_num
+        for(i=0;i<tmp;i++){
+            let div = document.getElementById('anno_container_'+(i+1).toString());
+            div.remove()
+        }
+        anno_num = 0;
+        state_list = [];
+    }
+
+    // 删除输入框
+    function del_input(){
+        let last_div = document.getElementById("input_container_"+input_num.toString());
+        last_div.remove()
+        input_num -= 1
+
+        if(input_num<6){
+            let add_btn = document.getElementById("add-input");
+            add_btn.disabled = false;
+        }
+        if(input_num==3){
+            let del_btn = document.getElementById("del-input");
+            del_btn.disabled = true;
+        }
+    }
+    function is_all_rejected(){
+        let all_rejected = true;
+        for(let i=0;i<state_list.length;i++){
+            if(state_list[i]!==0){
+                all_rejected = false
+                break
+            }
+        }
+        return all_rejected
+    }
+
+    // 任务导航按钮
+    function setTaskNavButtons(tidIndex) {
+        document.getElementById("previous-task").disabled = tidIndex == 0
+        document.getElementById("next-task").disabled = tidIndex == tidList.length - 1
+    }
+
+    //
+    function setModals(tidIndex, nextTidIndex) {
+        if (tidIndex >= 0) document.getElementById("goto-task-" + tidIndex).classList.toggle("active")
+        document.getElementById("goto-task-" + nextTidIndex).classList.toggle("active")
+    }
+
+    function setAnnotation(arbi_tasks){
+        clear_annotated()
+
+        for(let i=0;i<arbi_tasks.length;i++){
+            let anno = arbi_tasks[i][0]
+            let state = arbi_tasks[i][1]
+            add_annotated(anno, state)
+        }
+    }
+
+    document.getElementById("previous-task").addEventListener("click", () => saveAnnotation(() => load(tidIndex - 1)))
+    document.getElementById("next-task").addEventListener("click", () => saveAnnotation(() => load(tidIndex + 1)))
+    document.getElementById("save-task").addEventListener("click", () => saveAnnotation(null, true))
+    document.getElementById("exit").addEventListener("click", () => saveAnnotation(() => window.location.href = "{{ url_for('route.groups') }}"))
+
+    for(i=0;i<anno_num;i++){
+        let accept_btn = document.getElementById('accept'+(i+1).toString());
+        accept_btn.addEventListener("click", () => accept_anno(i))
+        let reject_btn = document.getElementById('reject'+(i+1).toString());
+        reject_btn.addEventListener("click", () => reject_anno(i))
+    }
+
+    {% for task_tid in tasks %}
+    document.getElementById("goto-task-{{ loop.index0 }}").addEventListener("click", () => {
+        if (tidIndex !== Number("{{ loop.index0 }}")) saveAnnotation(() => load(Number("{{ loop.index0 }}")))
+        bootstrap.Modal.getOrCreateInstance(document.querySelector("#goto-task")).hide()
+    })
+    {% endfor %}
+
+    let aspects_dict = {
+        '请选择': {'请选择': ['请选择']},
+        '汽车': {
+            '车型分类': ["轿车", "SUV", "跑车", "其他"],
+            '车身尺寸': ["车长、车宽、车高", "轴距、离地间隙", "车重、载重量", "其他"],
+            '动力系统': ["发动机", "变速箱", "驱动方式", "其他"],
+            '行驶性能': ["最高车速、加速性能", "制动性能", "转向性能", "悬挂性能", "燃油经济性、续航里程", "其他"],
+            '安全性能': ["安全气囊、安全带", "盲区监测系统、倒车影像", "自动泊车、自适应巡航", "其他"],
+            '内部设施': ["空调、音响系统", "导航、多媒体系统", "座椅、储物空间", "其他"],
+            '外观设计': ["车身线条、造型风格", "前脸、车灯、轮毂", "其他"],
+            '品牌声誉': ["历史沿革、品牌影响力", "售后服务、维修保养", "品牌认知度、口碑", "其他"],
+        },
+        '化妆品': {
+            '化妆品分类': ["护肤品", "彩妆品", "美发用品", "身体护理品", "其他"],
+            '适合人群': ["男性、女性、中性", "年龄", "肤质", "其他"],
+            '功能特点': [
+                "护肤品：保湿、美白、祛斑、抗皱、去角质、紧致",
+                "彩妆品：粉底液、遮瑕膏、唇膏、眼影、睫毛膏、腮红",
+                "美发用品：洗发水、护发素、染发剂、定型产品",
+                "身体护理品：香皂、沐浴露、润肤霜、除臭剂",
+                "其他"
+            ],
+            '成分特点': ["天然成分、有机成分", "化学成分、合成成分", "其他"],
+            '使用方法': ["涂抹", "喷洒", "擦拭", "按摩", "其他"],
+            '质地': ["液态", "膏状", "粉状", "凝胶状", "其他"],
+            '包装': ["盒装", "瓶装", "管装", "便携式", "家庭装", "其他"],
+            '品牌特点': ["品牌知名度、口碑", "品牌定位、价位", "其他"],
+        },
+        '笔记本电脑': {
+            "电脑品牌": ["苹果", "联想", "戴尔", "惠普", "华为", "其他"],
+            "电脑型号": ["超极本", "游戏本", "商务本", "轻薄本", "其他"],
+            "电脑配置": ["处理器", "内存", "硬盘", "显卡", "其他"],
+            "屏幕特点": ["尺寸", "分辨率", "色彩表现", "其他"],
+            "电池续航": ["续航时间", "充电时间", "其他"],
+            "设计风格": ["机身材质", "外观设计", "散热", "质量", "其他"],
+            "操作系统": ["Windows", "MacOS", "Linux", "其他"],
+            "电脑性能": ["运行速度", "启动速度", "软件兼容性", "噪音", "其他"],
+            "网络特点": ["无线网络", "蓝牙", "4G", "蜂窝网络", "其他"],
+        },
+        '餐厅': {
+            "餐厅类型": ["西餐厅", "中餐厅", "日本料理", "韩国料理", "东南亚菜", "快餐", "俄餐", "其他"],
+            "餐厅环境": ["装修风格", "音乐氛围", "灯光布局", "桌椅设计", "带有露台、私人包厢、观景位", "其他"],
+            "餐厅位置": ["市中心", "商业区", "居民区", "景区", "其他"],
+            "菜品特色": ["特色菜", "地方菜", "创意菜", "主打菜", "其他"],
+            "食材质量": ["新鲜度", "营养价值", "产地", "其他"],
+            "菜品口感": ["酸甜苦辣", "口感细腻或粗糙", "咀嚼度", "其他"],
+            "服务质量": ["服务态度、服务速度、服务技能", "中餐厅", "是否有特色服务、服务项目", "其他"],
+            "价格水平": ["餐厅档次", "地段", "口味", "服务", "其他"],
+            "卫生程度": ["餐具清洁", "环境卫生", "其他"],
+        },
+    }
+
+    var pre_level1_value = document.getElementsByName("level1")[0].value;
+    var pre_level2_value = document.getElementsByName("level2")[0].value;
+    var pre_level3_value = document.getElementsByName("level3")[0].value;
+
+    function updateOptions(select){
+        var level_name = select.getAttribute('name');
+        if (level_name=="level1"){
+            var level1 = select;
+            var level2 = select.nextElementSibling;
+            var level3 = select.nextElementSibling.nextElementSibling;
+        }else if (level_name=="level2"){
+            var level1 = select.previousElementSibling;
+            var level2 = select;
+            var level3 = select.nextElementSibling;
+        }else if (level_name=="level3"){
+            var level1 = select.previousElementSibling.previousElementSibling;
+            var level2 = select.previousElementSibling;
+            var level3 = select;
+        }
+
+        let level1_list = ["请选择","汽车","餐厅","笔记本电脑","化妆品"]
+        let level2_dict = aspects_dict[level1_list[Number(level1.value)]]
+        let level2_list = Object.keys(level2_dict)
+
+        // 初始均显示为“请选择”，但仅有level1_list
+        // 改变level1后，显示level2_list与level3_list，并显示第一个level2与其对应的第一个level3
+        if(level1.value !== pre_level1_value){
+            // 如果level1选择了“请选择”
+            if(level1.value=='0'){
+                level2.innerHTML = '<option value="0">请选择</option>'
+                level3.innerHTML = '<option value="0">请选择</option>'
+            }else{
+                // 显示level2_list
+                //let level2_dict = aspects_dict[level1_list[Number(level1.value)]]
+                //let level2_list = Object.keys(level2_dict)
+                var level2_html = ''
+                for (i=0; i<level2_list.length; i++){
+                    level2_html = level2_html + '<option value="' + String(i+1)+ '">' + level2_list[i] + '</option>'
+                }
+                level2.innerHTML = level2_html
+
+                // 显示level3_list
+                let level3_list = aspects_dict[level1_list[Number(level1.value)]][level2_list[0]]
+                let level3_html = ''
+                for (j=0; j<level3_list.length; j++){
+                    level3_html = level3_html + '<option value="' + String(j+1)+ '">' + level3_list[j] + '</option>'
+                }
+                level3.innerHTML = level3_html
+            }
+            pre_level1_value = level1.value
+            pre_level2_value = level2.value
+            pre_level3_value = level3.value
+
+        }else if(level2.value !== pre_level2_value){
+            // 改变了level2(不可能是“请选择”)，显示对应的level3_list与对应的第一个level3
+            let level3_list = aspects_dict[level1_list[Number(level1.value)]][level2_list[Number(level2.value)-1]]
+            let level3_html = ''
+            for (j=0; j<level3_list.length; j++){
+                level3_html = level3_html + '<option value="' + String(j+1)+ '">' + level3_list[j] + '</option>'
+            }
+            level3.innerHTML = level3_html
+
+            pre_level2_value = level2.value
+            pre_level3_value = level3.value
+        }else if(level3.value!==pre_level3_value){
+            // 如果选择了“其他”，则将显示输入框
+            let otherText = select.nextElementSibling;
+            if (Number(level3.value) == level3.length) {
+                otherText.style.display = "block";
+            } else {
+                otherText.style.display = "none";
+                otherText.value = "";
+            }
+            pre_level3_value = level3.value
+        }
+    }
+
+    // 保存选项
+    function saveSelection(save_button){
+        // 保存文本
+        const select_div = save_button.parentElement;
+        var levels = select_div.querySelectorAll("select");
+        var level1 = levels[0];
+        var level2 = levels[1];
+        var level3 = levels[2];
+        let level1_list = ["请选择","汽车","餐厅","笔记本电脑","化妆品"]
+        if(level1.value!=="0"){
+            // level1不为“请选择”
+            let level1_text = level1[Number(level1.value)].innerText
+            let level2_text = level2[Number(level2.value)-1].innerText
+            let level3_text = level3[Number(level3.value)-1].innerText
+            if(level3_text=="其他"){
+                // level3为“其他”
+                let otherInput = save_button.previousElementSibling;
+                other_text = otherInput.value
+                if(other_text.length!==0){
+                    // level3不为空
+                    // 保存文本信息，并决定是否创建新的选择
+                    saveSelectionText(save_button, level1_text, level2_text, other_text);
+                }
+            }else{
+                // level3不为“其他”
+                saveSelectionText(save_button, level1_text, level2_text, level3_text);
+            }
+        }
+    }
+
+    // 保存文本信息，并决定是否创建新的选择
+    function saveSelectionText(save_button, level1_text, level2_text, level3_text){
+        // 隐藏下拉框与保存按钮
+        var select_div = save_button.parentElement;
+        select_div.style.display = 'none';
+        // 显示展示框与修改删除按钮
+        var display_div = select_div.nextElementSibling;
+        display_div.style.display = 'flex';
+        // 填写已保存文本，并设置为仅读
+        var textarea_list = display_div.querySelectorAll('textarea');
+        textarea_list[0].value = level1_text;
+        textarea_list[0].readOnly = true;
+        textarea_list[1].value = level2_text;
+        textarea_list[1].readOnly = true;
+        textarea_list[2].value = level3_text;
+        textarea_list[2].readOnly = true;
+        // 决定是否创建新的选择
+        var next_row = display_div.parentElement.nextElementSibling;
+        if (next_row==null){
+            // 没有下一行，且未达到最大数量则创建
+            if (select_num<5){
+                var new_row= createNewRow();
+                // 插入到select_list中
+                select_list.appendChild(new_row);
+                select_num += 1;
+            }
+        }
+        pre_level1_value = "0";
+        pre_level2_value = "0";
+        pre_level3_value = "0";
+    }
+
+    // 创建新选择行
+    function createNewRow(){
+        const div = document.createElement("div");
+
+        const row1 = document.createElement("div");
+        row1.style.display = "flex";
+        row1.style.alignItems = "center";
+
+        const level1Select = createSelect({
+          name: "level1",
+          values: [
+            { value: "0", text: "请选择" },
+            { value: "1", text: "汽车" },
+            { value: "2", text: "餐厅" },
+            { value: "3", text: "笔记本电脑" },
+            { value: "4", text: "化妆品" },
+          ],
+        });
+        row1.appendChild(level1Select);
+
+        const level2Select = createSelect({
+          name: "level2",
+          values: [{ value: "0", text: "请选择" }],
+        });
+        row1.appendChild(level2Select);
+
+        const level3Select = createSelect({
+          name: "level3",
+          values: [{ value: "0", text: "请选择" }],
+        });
+        row1.appendChild(level3Select);
+
+        const otherLevelTextarea = createTextarea({
+          className: "other-level",
+          placeholder: "请输入",
+          maxlength: 10,
+        });
+        row1.appendChild(otherLevelTextarea);
+
+        const saveButton = createButton({
+          className: "btn btn-outline-success",
+          text: "保存",
+          onClick: (button) => saveSelection(button),
+        });
+        row1.appendChild(saveButton);
+
+        div.appendChild(row1);
+
+        const row2 = document.createElement("div");
+        row2.style.display = "none";
+        row2.style.alignItems = "center";
+
+        for (let i = 0; i < 3; i++) {
+          const displayLevelTextarea = createTextarea({
+            className: "display-level",
+            placeholder: ""
+          });
+          row2.appendChild(displayLevelTextarea);
+        }
+
+        const changeButton = createButton({
+          className: "btn btn-outline-primary",
+          text: "修改",
+          onClick: (button) => changeSelection(button),
+        });
+        row2.appendChild(changeButton);
+
+        const deleteButton = createButton({
+          className: "btn btn-outline-danger",
+          text: "删除",
+          onClick: (button) => deleteSelection(button),
+        });
+        row2.appendChild(deleteButton);
+
+        div.appendChild(row2);
+        return div;
+    }
+    function createSelect(options) {
+        const select = document.createElement("select");
+        select.name = options.name;
+        select.className = "select-level form-control";
+        select.onchange = () => updateOptions(select);
+
+        for (const option of options.values) {
+            const element = document.createElement("option");
+            element.value = option.value;
+            element.textContent = option.text;
+            select.appendChild(element);
+        }
+        return select;
+    }
+
+    function createTextarea(options) {
+        const textarea = document.createElement("textarea");
+        textarea.className = options.className;
+        textarea.placeholder = options.placeholder;
+        textarea.maxlength = options.maxlength;
+        return textarea;
+    }
+
+    function createButton(options) {
+        const button = document.createElement("button");
+        button.className = options.className;
+        button.textContent = options.text;
+        button.onclick = () => options.onClick(button);
+        return button;
+    }
+
+    // 修改选项
+    function changeSelection(change_button){
+        let display_div = change_button.parentElement;
+        display_div.style.display = 'none';
+        let select_div = display_div.previousElementSibling;
+        select_div.style.display = 'flex';
+    }
+
+    // 删除选项
+    function deleteSelection(delete_button){
+        if(select_num>1){
+            let row_div = delete_button.parentElement.parentElement;
+            row_div.remove()
+            select_num -= 1;
+            let all_select_row = select_list.children;
+            let last_row = all_select_row[all_select_row.length-1];
+            if(last_row.lastElementChild.style.display=="flex"){
+                var new_row= createNewRow();
+                // 插入到select_list中
+                select_list.appendChild(new_row);
+                pre_level1_value = "0";
+                pre_level2_value = "0";
+                pre_level3_value = "0";
+                select_num += 1;
+            }
+        }
+
+    }
+
+
+</script>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import brand, drawicon, navlink, footer %}
+{% block pageclass %}"h-100"{% endblock %}
+{% block title %}首页{% endblock %}
+{% block bodyclass %}"d-flex h-100 text-center"{% endblock %}
+{% block content %}
+<div class="d-flex w-100 h-100 p-3 mx-auto flex-column" style="max-width: 42em;">
+    {% include 'background.html' %}
+    <header class="mb-auto">
+        <div>
+            {{ brand('h3 text-decoration-none text-reset float-md-start mb-0') }}
+            <nav class="nav nav-masthead nav-masthead-margin justify-content-center float-md-end gap-2">
+                {{ navlink(url_for('route.home'), '主页', active=true) }}
+                {% if current_user.is_authenticated %}
+                {% if current_user.adjudicator %}
+                {{ navlink(url_for('route.groups'), '仲裁') }}
+                {% else %}
+                {{ navlink(url_for('route.groups'), '标注') }}
+                {% endif %}
+                {{ navlink(url_for('route.compare'), '参考') }}
+                {{ navlink(url_for('route.logout'), '退出登录') }}
+                {% else %}
+                {{ navlink(url_for('route.login'), '用户登录') }}
+                {% endif %}
+            </nav>
+        </div>
+    </header>
+    <main class="d-flex flex-column p-3 align-items-center gap-3">
+        <div class="d-flex justify-content-center flex-wrap">
+            <p class="display-2 text-nowrap mx-2 my-1 fw-bold">词连万物</p>
+            <p class="display-2 text-nowrap mx-2 my-1 fw-bold">句组千言</p>
+        </div>
+        <p class="display-6" href="{{ url_for('route.login') }}">
+            {% if current_user.is_authenticated %}
+            欢迎回来，{{ current_user.name }}
+            {% else %}
+            欢迎访问论点归纳标注网站
+            {% endif %}
+        </p>
+        <div class="d-flex justify-content-center flex-wrap text-nowrap">
+            <a class="btn btn-lg btn-outline-secondary fw-bold mx-2 my-1" href="https://sunlibo2390.github.io/screen-guidelines/" target="_blank">
+                {{ drawicon('book') }}
+                标注指南
+            </a>
+            <a class="btn btn-lg btn-outline-primary fw-bold mx-2 my-1" href="{{ url_for('route.groups') }}">
+                开始{% if current_user.adjudicator %}仲裁{% else %}标注{% endif %}
+                {{ drawicon('chevron-double-right') }}
+            </a>
+        </div>
+    </main>
+    {{ footer('d-flex justify-content-center flex-wrap mt-auto') }}
+</div>
+{% endblock %}

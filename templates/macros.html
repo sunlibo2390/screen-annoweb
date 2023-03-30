@@ -1,0 +1,60 @@
+{% macro drawicon(icon, class='') %}
+<i class="bi bi-{{ icon }} {{ class }}"></i>
+{% endmacro %}
+
+{% macro brand(class='mb-0 navbar-brand') %}
+<a class="{{ class }}" href="{{ url_for('route.home') }}">
+    {{ drawicon('pencil-square') }}
+    论点归纳标注
+</a>
+{% endmacro %}
+
+{% macro navlink(href, title, active=false, newpage=false, icon='') %}
+<a class="nav-link {% if active %}active{% endif %}" {% if active %}aria-current="page" {% endif %} href="{{ href }}"
+    {% if newpage %}target="_blank" {% endif %}>
+    {{ title }}
+    {% if icon %}
+    {{ drawicon(icon) }}
+    {% endif %}
+</a>
+{% endmacro %}
+
+{% macro navbar(active, user='', adjudicator=false, admin=false) %}
+<div class="navbar navbar-expand-sm navbar-light">
+    <div class="container-fluid">
+        {{ brand() }}
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="展示导航">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <nav class="collapse navbar-collapse nav-masthead" id="navbar">
+            <div class="navbar-nav me-auto mb-2 mb-sm-0">
+                {{ navlink(url_for('route.home'), '主页', active=active == 0) }}
+                {% if adjudicator %}
+                {{ navlink(url_for('route.groups'), '仲裁', active=active == 1) }}
+                {% else %}
+                {{ navlink(url_for('route.groups'), '标注', active=active == 1) }}
+                {% endif %}
+                {{ navlink(url_for('route.compare'), '参考', active=active == 2) }}
+                {% if admin %}
+                {{ navlink(url_for('route.admin'), '管理', active=active == 4) }}
+                {% endif %}
+                {{ navlink('https://sunlibo2390.github.io/screen-guidelines/', '指南', newpage=true, icon='box-arrow-up-right') }}
+            </div>
+            {% if user %}
+            {{ navlink(url_for('route.groups'), user + ' |')}}
+            {{ navlink(url_for('route.reset'), '修改密码 |') }}
+            {{ navlink(url_for('route.logout'), '退出登录') }}
+            {% else %}
+            {{ navlink(url_for('route.login'), '用户登录') }}
+            {% endif %}
+        </nav>
+    </div>
+</div>
+{% endmacro %}
+
+{% macro footer(class='d-flex justify-content-center flex-wrap mb-3') %}
+<footer class="{{ class }}">
+    <p class="mx-3 text-center">版权所有 © 2021 复旦大学 DISC 实验室论点归纳项目组</p>
+    <a class="mx-3 text-center mb-3" href="http://fudan-disc.com/" target="_blank">DISC 主页</a>
+</footer>
+{% endmacro %}

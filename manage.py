@@ -46,7 +46,7 @@ def load_user(uid):
 def run_server(dev):
     from os import environ
     environ['FLASK_ENV'] = 'development'
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=4000)
     # app.run(host='47.113.193.232', port=5000)
 
 
